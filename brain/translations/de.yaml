@@ -1,0 +1,31 @@
+configuration:
+  vault_dir:
+    name: Vault-Ordner
+    description: Hier liegt das Gedächtnis als Obsidian-Vault (Markdown-Dateien mit Verlauf in Git). Unter /share, damit du es bei Bedarf in Obsidian öffnen kannst.
+  claude_bridge_url:
+    name: Gateway-Adresse
+    description: Interne Adresse der Claude-Brücke im Inkbox Claude Gateway. Die Vorgabe passt, wenn das Gateway aus dem Repository fabiaiagent installiert ist.
+  claude_oauth_token:
+    name: Claude-Token (optional)
+    description: Leer lassen – dann fragt das Gedächtnis Claude über das Gateway. Nur nötig, wenn du einen eigenen Token aus „claude setup-token“ nutzen willst.
+  claude_model:
+    name: Claude-Modell
+    description: Optional, leer = Standard.
+  batch_seconds:
+    name: Sammelzeit (Sekunden)
+    description: So lange wird nach einer neuen Info gewartet, damit zusammengehörige Infos gemeinsam einsortiert werden (spart Claude-Aufrufe).
+  batch_size:
+    name: Infos pro Durchgang
+    description: Höchstens so viele Infos sortiert Claude auf einmal ein.
+  consolidate_hour:
+    name: Aufräumen um
+    description: Zu dieser Stunde werden nachts Doppelte zusammengeführt, lange Notizen verdichtet, alte Tage zusammengefasst und das Profil erneuert.
+  max_facts:
+    name: Max. Fakten pro Notiz
+    description: Hat eine Notiz mehr Fakten, wird sie beim Aufräumen verdichtet (nichts geht verloren, Ersetztes landet im Verlauf).
+  events_compress_days:
+    name: Tagebuch zusammenfassen nach (Tagen)
+    description: Ältere Tage werden zu einer Monatszusammenfassung; die Originale wandern ins Archiv.
+  api_key:
+    name: API-Schlüssel (optional)
+    description: Wenn gesetzt, müssen andere Add-ons ihn im Header X-Brain-Key mitschicken. Leer = jedes Add-on im Home-Assistant-Netz darf zugreifen.

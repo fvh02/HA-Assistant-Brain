@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gedächtnis</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#677084; --line:#e2e5eb; --accent:#5b5bd6; --ok:#2f8f5b; --bad:#c2410c; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161b; --card:#1d2027; --text:#e6e8ee; --muted:#9aa2b2; --line:#2c303a; --accent:#8b8bf0; --ok:#5cc28c; --bad:#f08a5d; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 22px; margin: 4px 0 12px; } h2 { font-size: 16px; margin: 0 0 10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .stats { display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:10px; }
+  .stat b { display:block; font-size:22px; } .stat span { color:var(--muted); font-size:13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  input, textarea, button { font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  input, textarea { flex:1; min-width:0; } textarea { width:100%; min-height:70px; }
+  button { background:var(--accent); color:#fff; border:none; cursor:pointer; } button.ghost { background:transparent; color:var(--accent); border:1px solid var(--line); }
+  .muted { color:var(--muted); font-size:13px; } .bad { color:var(--bad); } .ok { color:var(--ok); }
+  .hit { padding:8px 0; border-top:1px solid var(--line); cursor:pointer; } .hit:first-child { border-top:none; }
+  .tag { display:inline-block; font-size:12px; padding:1px 8px; border-radius:99px; border:1px solid var(--line); color:var(--muted); margin-right:4px; }
+  ul { padding-left:18px; margin:6px 0; } li { margin:2px 0; }
+  .link { color:var(--accent); cursor:pointer; }
+  table { width:100%; border-collapse:collapse; font-size:13px; } td { border-top:1px solid var(--line); padding:6px 4px; vertical-align:top; }
+  pre { white-space:pre-wrap; margin:0; font:inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🧠 Gedächtnis</h1>
+  <div class="card"><div class="stats" id="stats"></div><p class="muted" id="state"></p></div>
+
+  <div class="card">
+    <h2>Suchen</h2>
+    <div class="row"><input id="q" placeholder="z. B. Max, Spieleabend, Drucker …"><button onclick="search()">Suchen</button></div>
+    <div id="hits"></div>
+  </div>
+
+  <div class="card" id="noteCard" hidden><div id="note"></div></div>
+
+  <div class="card">
+    <h2>Etwas merken</h2>
+    <textarea id="info" placeholder="z. B. Max ist nach Bonn gezogen."></textarea>
+    <div class="row" style="margin-top:8px"><button onclick="remember()">Merken</button><span class="muted" id="remembered"></span></div>
+  </div>
+
+  <div class="card"><h2>Profil</h2><pre id="profile" class="muted">–</pre></div>
+
+  <div class="card">
+    <h2>Eingang</h2>
+    <div class="row" style="margin-bottom:8px">
+      <button class="ghost" onclick="retry()">Fehlgeschlagene erneut</button>
+      <button class="ghost" onclick="consolidate()">Jetzt aufräumen</button>
+    </div>
+    <table id="inbox"></table>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const links = s => esc(s).replace(/\[\[([^\]|]+)(\|[^\]]*)?\]\]/g, (_, t) => `<span class="link" data-title="${t}">${t}</span>`);
+async function api(path, opts) { const r = await fetch("api/" + path, opts); return r.json(); }
+const post = (path, body) => api(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {})});
+
+document.addEventListener("click", e => { const t = e.target.closest("[data-title]"); if (t) openNote(t.dataset.title); });
+$("q").addEventListener("keydown", e => { if (e.key === "Enter") search(); });
+
+async function load() {
+  const s = await api("status");
+  const st = s.stats || {};
+  const tiles = [["Notizen", st.notizen], ["Fakten", st.fakten], ["Verknüpfungen", st.verknuepfungen],
+                 ["Tagebuch-Einträge", st.ereignisse], ["In Warteschlange", (s.inbox || {}).offen || 0], ["Fehlgeschlagen", (s.inbox || {}).fehler || 0]];
+  $("stats").innerHTML = tiles.map(([k, v]) => `<div class="stat"><b>${v ?? 0}</b><span>${k}</span></div>`).join("");
+  const claude = {gateway: "über das Gateway", token: "mit eigenem Token", missing: "<span class='bad'>nicht verbunden</span>"}[s.claude];
+  $("state").innerHTML = [s.busy ? `<span class="ok">Gerade: ${esc(s.busy)}</span>` : "Bereit",
+    `Claude ${claude}`, s.last_ingest ? `zuletzt einsortiert ${esc(s.last_ingest)}` : "",
+    s.last_consolidate ? `aufgeräumt ${esc(s.last_consolidate)}` : `Aufräumen um ${s.consolidate_hour} Uhr`,
+    s.error ? `<span class="bad">Fehler: ${esc(s.error)}</span>` : ""].filter(Boolean).join(" · ");
+  const p = await api("profile"); $("profile").innerHTML = p.text ? links(p.text) : "Noch kein Profil – es entsteht beim ersten Aufräumen.";
+  const inbox = await api("inbox?limit=30");
+  $("inbox").innerHTML = inbox.map(i => `<tr><td class="muted">${esc(i.zeitpunkt)}<br>${esc(i.quelle)}</td><td>${esc(i.text)}`
+    + `${i.ergebnis ? `<div class="muted">→ ${esc(i.ergebnis)}</div>` : ""}${i.fehler ? `<div class="bad">${esc(i.fehler)}</div>` : ""}</td>`
+    + `<td class="${i.status === "fehler" ? "bad" : i.status === "erledigt" ? "ok" : "muted"}">${esc(i.status)}</td></tr>`).join("")
+    || "<tr><td class='muted'>Noch keine Infos eingegangen.</td></tr>";
+}
+
+async function search() {
+  const hits = await api("search?limit=15&q=" + encodeURIComponent($("q").value));
+  $("hits").innerHTML = hits.length ? hits.map(h => h.kind === "notiz"
+      ? `<div class="hit" data-title="${esc(h.title)}"><b>${esc(h.title)}</b> <span class="tag">${esc(h.type)}</span><div class="muted">${esc(h.summary || h.snippet)}</div></div>`
+      : `<div class="hit"><b>Tagebuch ${esc(h.title)}</b><div class="muted">${esc(h.snippet)}</div></div>`).join("")
+    : "<p class='muted'>Nichts gefunden.</p>";
+}
+
+async function openNote(title) {
+  const n = await api("note?title=" + encodeURIComponent(title));
+  $("noteCard").hidden = false;
+  if (n.error) { $("note").innerHTML = `<h2>${esc(title)}</h2><p class="muted">Noch keine Notiz dazu.</p>`; return; }
+  const fact = f => `<li>${esc(f.text)} <span class="muted">· ${esc(f.time)} · ${esc(f.source)}${f.until ? " · bis " + esc(f.until) : ""}</span></li>`;
+  $("note").innerHTML = `<h2>${esc(n.title)} <span class="tag">${esc(n.type)}</span>${n.aliases.map(a => `<span class="tag">${esc(a)}</span>`).join("")}</h2>`
+    + `<p>${esc(n.summary)}</p><b>Fakten</b><ul>${n.facts.map(fact).join("")}</ul>`
+    + (n.history.length ? `<b>Verlauf</b><ul>${n.history.map(fact).join("")}</ul>` : "")
+    + (n.links.length ? `<p><b>Verknüpft:</b> ${n.links.map(t => `<span class="link" data-title="${esc(t)}">${esc(t)}</span>`).join(", ")}</p>` : "")
+    + (n.backlinks.length ? `<p><b>Erwähnt in:</b> ${n.backlinks.map(t => `<span class="link" data-title="${esc(t)}">${esc(t)}</span>`).join(", ")}</p>` : "")
+    + `<p class="muted">${esc(n.path)} · aktualisiert ${esc(n.updated)}</p>`;
+  $("noteCard").scrollIntoView({behavior: "smooth"});
+}
+
+async function remember() {
+  const text = $("info").value.trim(); if (!text) return;
+  const r = await post("remember", {text, source: "dashboard"});
+  $("remembered").textContent = r.ok ? `Gespeichert um ${r.gespeichert[0].empfangen} – wird gleich einsortiert.` : (r.error || "Fehler");
+  if (r.ok) $("info").value = ""; load();
+}
+async function retry() { await post("inbox/retry"); load(); }
+async function consolidate() { const r = await post("consolidate"); alert(r.ok ? "Aufräumen gestartet." : r.error); load(); }
+
+load(); setInterval(load, 15000);
+</script>
+</body>
+</html>

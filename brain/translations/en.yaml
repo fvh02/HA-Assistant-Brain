@@ -1,0 +1,31 @@
+configuration:
+  vault_dir:
+    name: Vault folder
+    description: The memory lives here as an Obsidian vault (Markdown files, history in Git). Under /share so you can open it in Obsidian if you want.
+  claude_bridge_url:
+    name: Gateway address
+    description: Internal address of the Claude bridge in the Inkbox Claude Gateway. The default fits when the gateway from the fabiaiagent repository is installed.
+  claude_oauth_token:
+    name: Claude token (optional)
+    description: Leave empty to ask Claude through the gateway. Only needed for an own token from "claude setup-token".
+  claude_model:
+    name: Claude model
+    description: Optional, empty = default.
+  batch_seconds:
+    name: Collect time (seconds)
+    description: Wait this long after a new info so infos that belong together are sorted in together.
+  batch_size:
+    name: Infos per run
+    description: At most this many infos are sorted in at once.
+  consolidate_hour:
+    name: Clean-up at
+    description: At this hour duplicates are merged, long notes condensed, old days summarised and the profile renewed.
+  max_facts:
+    name: Max. facts per note
+    description: Notes with more facts are condensed during the clean-up (nothing is lost, replaced facts go to the history).
+  events_compress_days:
+    name: Summarise diary after (days)
+    description: Older days become one summary per month; the originals go to the archive.
+  api_key:
+    name: API key (optional)
+    description: If set, other add-ons must send it in the X-Brain-Key header. Empty = every add-on in the Home Assistant network may access.

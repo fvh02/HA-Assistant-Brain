@@ -1,0 +1,40 @@
+name: Gedächtnis
+version: "0.1.0"
+slug: brain
+description: Langzeitgedächtnis für den Assistenten und deine Add-ons – ein Obsidian-Vault, den Claude pflegt
+url: https://github.com/fvh02/HA-Assistant-Brain
+image: ghcr.io/fvh02/{arch}-ha-assistant-brain
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+map:
+  - share:rw
+ingress: true
+ingress_port: 8096
+panel_icon: mdi:brain
+panel_title: Gedächtnis
+options:
+  vault_dir: /share/brain-vault
+  claude_bridge_url: http://afcf546d-inkbox-claude-gateway:8093
+  claude_oauth_token: ""
+  claude_model: ""
+  batch_seconds: 20
+  batch_size: 10
+  consolidate_hour: 3
+  max_facts: 30
+  events_compress_days: 60
+  api_key: ""
+schema:
+  vault_dir: str
+  claude_bridge_url: str?
+  claude_oauth_token: password?
+  claude_model: str?
+  batch_seconds: int(0,600)
+  batch_size: int(1,30)
+  consolidate_hour: int(0,23)
+  max_facts: int(10,200)
+  events_compress_days: int(14,3650)
+  api_key: password?
